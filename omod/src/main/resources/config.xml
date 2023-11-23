@@ -20,11 +20,25 @@
     <!-- Required Modules -->
     <require_modules>
         <require_module version="${webservicesRestModuleVersion}">org.openmrs.module.webservices.rest</require_module>
-        <require_module version="${openmrsAtomfeedVersion}">org.ict4h.openmrs.openmrs-atomfeed</require_module>
-        <require_module version="${openmrsOwaVersion}">org.openmrs.module.owa</require_module>
     </require_modules>
     <!-- / Required Modules -->
 
+	<aware_of_modules>
+		<aware_of_module version="${openmrsAtomfeedVersion}">org.ict4h.openmrs.openmrs-atomfeed</aware_of_module>
+		<aware_of_module version="${openmrsOwaVersion}">org.openmrs.module.owa</aware_of_module>
+	</aware_of_modules>
+
+	<conditional_resources>
+		<conditionalResource>
+			<path>/lib/fhir2-api-2.1-${project.parent.version}.jar</path>
+			<modules>
+				<module>
+					<moduleId>org.ict4h.openmrs.openmrs-atomfeed</moduleId>
+					<version>${openmrsAtomfeedVersion}</version>
+				</module>
+			</modules>
+		</conditionalResource>
+	</conditional_resources>
     <!-- Module Activator -->
 	<activator>${project.parent.groupId}.${project.parent.artifactId}.BedManagementActivator</activator>
 
