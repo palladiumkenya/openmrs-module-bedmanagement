@@ -736,7 +736,7 @@
                     'When a user creates a ward, they may only choose a location with this tag',
                     1,
                     now(),
-                    uuid());
+                    "839c65c7-9998-4b90-b80b-39727dfe9fa2");
         </sql>
     </changeSet>
 </databaseChangeLog>
