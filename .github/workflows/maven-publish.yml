@@ -17,7 +17,7 @@ jobs:
         port: ${{ secrets.PORT }}
         command_timeout: 200m
         script: |
-          cd /apps/github-workflows/bedmanagement-modules
+          cd /apps/github-workflows/kenyaemr-modules
           sudo rm -rf openmrs-module-bedmanagement
           sudo mkdir openmrs-module-bedmanagement
           sudo chown -R cicd2:cicd2 openmrs-module-bedmanagement
