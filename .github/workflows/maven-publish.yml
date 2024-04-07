@@ -56,7 +56,7 @@ jobs:
           sudo chown -R cicd:cicd openmrs-module-bedmanagement
           git config --global --add safe.directory /apps/githubworkflows/bedmanagement-modules/openmrs-module-bedmanagement
           cd /apps/githubworkflows/bedmanagement-modules/openmrs-module-bedmanagement
-          git clone -b master https://github.com/palladiumkenya/openmrs-module-bedmanagement.git .
+          sudo git clone -b master https://github.com/palladiumkenya/openmrs-module-bedmanagement.git .
           git status
           mvn license:format
           sudo mvn clean install -DskipTests
