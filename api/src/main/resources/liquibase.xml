@@ -720,4 +720,23 @@
         <comment>Renaming column column_number to bed_column_number in table bed_location_map because column_number is a reserved word in MySQL 8.0.2 and later</comment>
         <renameColumn columnDataType="int" newColumnName="bed_column_number" oldColumnName="column_number" tableName="bed_location_map" />
     </changeSet>
+
+    <changeSet id="BM_79edee52-e04f-11ee-9b25-26221147bbeb" author="injiri">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*)
+                FROM location_tag
+                where name = 'Admission Location';
+            </sqlCheck>
+        </preConditions>
+        <comment>Add Admission Location Tag if not already added.</comment>
+        <sql>
+            INSERT INTO location_tag (name, description, creator, date_created, uuid)
+            VALUES ('Admission Location',
+                    'When a user creates a ward, they may only choose a location with this tag',
+                    1,
+                    now(),
+                    "839c65c7-9998-4b90-b80b-39727dfe9fa2");
+        </sql>
+    </changeSet>
 </databaseChangeLog>
