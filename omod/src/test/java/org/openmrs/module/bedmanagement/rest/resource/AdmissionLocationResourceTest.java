@@ -1,15 +1,5 @@
 package org.openmrs.module.bedmanagement.rest.resource;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.openmrs.module.bedmanagement.constants.BedManagementApiConstants.LOCATION_TAG_SUPPORTS_ADMISSION;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-
 import org.apache.commons.beanutils.PropertyUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.Assert;
@@ -21,6 +11,18 @@ import org.openmrs.module.webservices.rest.SimpleObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.bind.annotation.RequestMethod;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.openmrs.module.bedmanagement.constants.BedManagementApiConstants.LOCATION_TAG_SUPPORTS_ADMISSION;
 
 public class AdmissionLocationResourceTest extends MainResourceControllerTest {
 	
@@ -58,20 +60,58 @@ public class AdmissionLocationResourceTest extends MainResourceControllerTest {
 		LinkedHashMap<String, Object> occupiedBed = (LinkedHashMap<String, Object>) ((List) object.get("bedLayouts")).get(0);
 		LinkedHashMap<String, Object> unOccupiedBed = (LinkedHashMap<String, Object>) ((List) object.get("bedLayouts"))
 		        .get(2);
-		LinkedHashMap<String, Object> patient = (LinkedHashMap<String, Object>) occupiedBed.get("patient");
+		List<Map<String, Object>> patients = (List<Map<String, Object>>) occupiedBed.get("patients");
 		
 		assertEquals(6, bedLayouts.size());
 		assertEquals("OCCUPIED", occupiedBed.get("status"));
 		assertEquals("307-a", occupiedBed.get("bedNumber"));
-		assertNotNull(patient);
-		assertEquals("2b597be0-83c7-4f1d-b3d2-1d61ab128762", patient.get("uuid"));
+		assertNotNull(patients);
+		assertEquals(patients.size(), 1);
+		{
+			Map patient = patients.get(0);
+			assertEquals("2b597be0-83c7-4f1d-b3d2-1d61ab128762", patient.get("uuid"));
+			Map person = (Map) patient.get("person");
+			assertNotNull(person);
+			assertEquals("F", person.get("gender"));
+			assertTrue(person.containsKey("age"));
+			assertNull(person.get("age"));
+			Map preferredName = (Map) person.get("preferredName");
+			assertNotNull(preferredName);
+			assertEquals("John", preferredName.get("givenName"));
+			assertEquals("Doe", preferredName.get("familyName"));
+			assertTrue(person.containsKey("preferredAddress"));
+			List identifiers = (List) patient.get("identifiers");
+			assertEquals(1, identifiers.size());
+			Map identifier = (Map) identifiers.get(0);
+			assertEquals("1234", identifier.get("identifier"));
+		}
+		
 		List<Object> bedTagMapsForOccupiedBed = (List<Object>) occupiedBed.get("bedTagMaps");
 		assertEquals(2, bedTagMapsForOccupiedBed.size());
+		for (Object bedTagMap : bedTagMapsForOccupiedBed) {
+			Map m = (Map) bedTagMap;
+			String uuid = (String) m.get("uuid");
+			String tagName = (String) ((Map) m.get("bedTag")).get("name");
+			if (uuid.equals("73e846d6-ed5f-55e6-a3c9-0800274a1111")) {
+				assertEquals("Broken", tagName);
+			} else if (uuid.equals("73e846d6-ed5f-55e6-a3c9-0800274a2222")) {
+				assertEquals("Oxygen", tagName);
+			} else {
+				Assert.fail("Unexpected bedTagMap: " + bedTagMap);
+			}
+		}
+		
 		assertEquals("AVAILABLE", unOccupiedBed.get("status"));
 		assertEquals("307-c", unOccupiedBed.get("bedNumber"));
-		assertNull(unOccupiedBed.get("patient"));
+		assertNotNull(unOccupiedBed.get("patients"));
+		assertEquals(((List) unOccupiedBed.get("patients")).size(), 0);
 		List<Object> bedTagMapsForUnOccupiedBed = (List<Object>) unOccupiedBed.get("bedTagMaps");
 		assertEquals(1, bedTagMapsForUnOccupiedBed.size());
+		{
+			Map bedTagMap = (Map) bedTagMapsForUnOccupiedBed.get(0);
+			assertEquals("73e846d6-ed5f-55e6-a3c9-0800274a3333", bedTagMap.get("uuid"));
+			assertEquals("Oxygen", ((Map) bedTagMap.get("bedTag")).get("name"));
+		}
 	}
 	
 	@Test
@@ -132,8 +172,8 @@ public class AdmissionLocationResourceTest extends MainResourceControllerTest {
 		SimpleObject location = deserialize(handle(request));
 		
 		Assert.assertEquals("19e023e8-20ee-4237-ade6-9e68f897b7a9", PropertyUtils.getProperty(location.get("ward"), "uuid"));
-		Assert.assertEquals(6, location.get("totalBeds"));
-		Assert.assertEquals(2, location.get("occupiedBeds"));
+		Assert.assertEquals(Integer.valueOf(6), location.get("totalBeds"));
+		Assert.assertEquals(Integer.valueOf(2), location.get("occupiedBeds"));
 		Assert.assertTrue(location.containsKey("bedLayouts"));
 		List bedLayouts = (ArrayList) location.get("bedLayouts");
 		Assert.assertEquals(6, bedLayouts.size());
@@ -143,8 +183,8 @@ public class AdmissionLocationResourceTest extends MainResourceControllerTest {
 		
 		Assert.assertEquals("98bc9b32-9d1a-11e2-8137-0800271c1b75",
 		    PropertyUtils.getProperty(location2.get("ward"), "uuid"));
-		Assert.assertEquals(10, location2.get("totalBeds"));
-		Assert.assertEquals(1, location2.get("occupiedBeds"));
+		Assert.assertEquals(Integer.valueOf(10), location2.get("totalBeds"));
+		Assert.assertEquals(Integer.valueOf(1), location2.get("occupiedBeds"));
 		Assert.assertFalse(location2.containsKey("bedLayouts"));
 	}
 	
@@ -177,8 +217,8 @@ public class AdmissionLocationResourceTest extends MainResourceControllerTest {
 		Assert.assertNull(PropertyUtils.getProperty(admissionLocation.get("ward"), "childLocations"));
 		List tags = (ArrayList) PropertyUtils.getProperty(admissionLocation.get("ward"), "tags");
 		Assert.assertEquals("Admission Location", PropertyUtils.getProperty(tags.get(0), "display"));
-		Assert.assertEquals(0, admissionLocation.get("totalBeds"));
-		Assert.assertEquals(0, admissionLocation.get("occupiedBeds"));
+		Assert.assertEquals(Integer.valueOf(0), admissionLocation.get("totalBeds"));
+		Assert.assertEquals(Integer.valueOf(0), admissionLocation.get("occupiedBeds"));
 	}
 	
 	@Test
@@ -199,8 +239,8 @@ public class AdmissionLocationResourceTest extends MainResourceControllerTest {
 		HashMap parentAdmissionLocation = (LinkedHashMap) PropertyUtils.getProperty(admissionLocation.get("ward"),
 		    "parentLocation");
 		Assert.assertEquals("7779d653-393b-4118-9c83-a3715b82d4ac", parentAdmissionLocation.get("uuid"));
-		Assert.assertEquals(0, admissionLocation.get("totalBeds"));
-		Assert.assertEquals(0, admissionLocation.get("occupiedBeds"));
+		Assert.assertEquals(Integer.valueOf(0), admissionLocation.get("totalBeds"));
+		Assert.assertEquals(Integer.valueOf(0), admissionLocation.get("occupiedBeds"));
 	}
 	
 	@Test
@@ -261,5 +301,39 @@ public class AdmissionLocationResourceTest extends MainResourceControllerTest {
 		// org.openmrs.module.webservices.rest.web.v1_0.controller.MainResourceController.create(MainResourceController.java:92)\n\tat
 		// etc
 		handle(request);
+	}
+	
+	@Test
+	public void shouldSupportCustomRepresentation() throws Exception {
+		MockHttpServletRequest request = request(RequestMethod.GET, getURI() + "/" + getUuid());
+		request.setParameter("v", "custom:(ward:(name),bedLayouts:(bedNumber,bedTagMaps:(bedTag:(name))))");
+		SimpleObject object = deserialize(handle(request));
+		System.out.println(object);
+		Assert.assertEquals(2, object.keySet().size());
+		Map<String, Object> ward = object.get("ward");
+		Assert.assertNotNull(ward);
+		Assert.assertEquals(1, ward.keySet().size());
+		Assert.assertEquals("Orthopaedic ward", ward.get("name"));
+		List<Map<String, Object>> bedLayouts = object.get("bedLayouts");
+		Assert.assertNotNull(bedLayouts);
+		Assert.assertEquals(6, bedLayouts.size());
+		for (Map<String, Object> bedLayout : bedLayouts) {
+			Assert.assertEquals(2, bedLayout.size());
+			String bedNumber = (String) bedLayout.get("bedNumber");
+			Assert.assertNotNull(bedNumber);
+			if (bedNumber.equals("307-a")) {
+				List<Map<String, Object>> bedTagMaps = (List<Map<String, Object>>) bedLayout.get("bedTagMaps");
+				Assert.assertEquals(2, bedTagMaps.size());
+				for (Map<String, Object> bedTagMap : bedTagMaps) {
+					Assert.assertEquals(1, bedTagMap.size());
+					Map<String, Object> bedTag = (Map<String, Object>) bedTagMap.get("bedTag");
+					Assert.assertNotNull(bedTag);
+					Assert.assertEquals(1, bedTag.size());
+					String bedTagName = (String) bedTag.get("name");
+					Assert.assertNotNull(bedTagName);
+					Assert.assertTrue(bedTagName.equals("Oxygen") || bedTagName.equals("Broken"));
+				}
+			}
+		}
 	}
 }

@@ -14,24 +14,31 @@
 package org.openmrs.module.bedmanagement.dao.impl;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.BooleanUtils;
 import org.hibernate.Criteria;
-import org.hibernate.Query;
+import org.hibernate.query.Query;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.criterion.Restrictions;
 import org.hibernate.transform.Transformers;
-import org.openmrs.Encounter;
 import org.openmrs.Location;
 import org.openmrs.Patient;
 import org.openmrs.module.bedmanagement.AdmissionLocation;
-import org.openmrs.module.bedmanagement.BedDetails;
 import org.openmrs.module.bedmanagement.BedLayout;
-import org.openmrs.module.bedmanagement.BedLayoutWithDetails;
 import org.openmrs.module.bedmanagement.constants.BedStatus;
 import org.openmrs.module.bedmanagement.dao.BedManagementDao;
-import org.openmrs.module.bedmanagement.entity.*;
+import org.openmrs.module.bedmanagement.entity.Bed;
+import org.openmrs.module.bedmanagement.entity.BedLocationMapping;
+import org.openmrs.module.bedmanagement.entity.BedPatientAssignment;
+import org.openmrs.module.bedmanagement.entity.BedTag;
+import org.openmrs.module.bedmanagement.entity.BedTagMap;
+import org.openmrs.module.bedmanagement.entity.BedType;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class BedManagementDaoImpl implements BedManagementDao {
 	
@@ -39,40 +46,6 @@ public class BedManagementDaoImpl implements BedManagementDao {
 	
 	public void setSessionFactory(SessionFactory sessionFactory) {
 		this.sessionFactory = sessionFactory;
-	}
-	
-	private List<Location> getPhysicalLocationsByLocationTagAndParentLocation(String locationTagName, Location location,
-	        Session session) {
-		return session.createQuery(
-		    "from Location physicalLocation where exists (from physicalLocation.tags tag where tag.name = :locationTag) "
-		            + "and physicalLocation.parentLocation = :ward")
-		        .setParameter("locationTag", locationTagName).setParameter("ward", location).list();
-	}
-	
-	@Override
-	public BedDetails assignPatientToBed(Patient patient, Encounter encounter, Bed bed) {
-		
-		Session session = sessionFactory.getCurrentSession();
-		
-		BedPatientAssignment bedPatientAssignment = new BedPatientAssignment();
-		bedPatientAssignment.setPatient(patient);
-		bedPatientAssignment.setEncounter(encounter);
-		bedPatientAssignment.setBed(bed);
-		bedPatientAssignment.setStartDatetime(Calendar.getInstance().getTime());
-		
-		Set<BedPatientAssignment> bedPatientAssignments = new HashSet<BedPatientAssignment>();
-		bedPatientAssignments.add(bedPatientAssignment);
-		
-		bed.setBedPatientAssignment(bedPatientAssignments);
-		bed.setStatus(BedStatus.OCCUPIED.toString());
-		
-		session.saveOrUpdate(bed);
-		
-		BedDetails bedDetails = new BedDetails();
-		bedDetails.setBed(bed);
-		bedDetails.setBedNumber(bed.getBedNumber());
-		bedDetails.addCurrentAssignment(bedPatientAssignment);
-		return bedDetails;
 	}
 	
 	@Override
@@ -113,45 +86,33 @@ public class BedManagementDaoImpl implements BedManagementDao {
 	}
 	
 	@Override
-	public BedDetails unassignPatient(Patient patient, Bed bed) {
-		Session session = sessionFactory.getCurrentSession();
-		BedPatientAssignment currentBedPatientAssignment = (BedPatientAssignment) session
-		        .createQuery("from BedPatientAssignment where bed=:bed and patient=:patient and endDatetime is null")
-		        .setParameter("bed", bed).setParameter("patient", patient).uniqueResult();
-		currentBedPatientAssignment.setEndDatetime(new Date());
-		session.saveOrUpdate(currentBedPatientAssignment);
-		
-		Bed bedFromSession = (Bed) session.get(Bed.class, bed.getId());
-		List<BedPatientAssignment> activeBedPatientAssignment = filterActiveBedPatientAssignments(bedFromSession);
-		if (activeBedPatientAssignment.size() == 0) {
-			bedFromSession.setStatus(BedStatus.AVAILABLE.toString());
-		}
-		session.saveOrUpdate(bedFromSession);
-		
-		session.flush();
-		
-		BedDetails bedDetails = new BedDetails();
-		bedDetails.setBed(bedFromSession);
-		bedDetails.setBedNumber(bedFromSession.getBedNumber());
-		bedDetails.setLastAssignment(currentBedPatientAssignment);
-		return bedDetails;
-	}
-	
-	private List<BedPatientAssignment> filterActiveBedPatientAssignments(Bed bedFromSession) {
-		List<BedPatientAssignment> activeBedPatientAssignment = new ArrayList<BedPatientAssignment>();
-		for (BedPatientAssignment bedPatientAssignment : bedFromSession.getBedPatientAssignment()) {
-			if (bedPatientAssignment.getEndDatetime() == null) {
-				activeBedPatientAssignment.add(bedPatientAssignment);
-			}
-		}
-		return activeBedPatientAssignment;
-	}
-	
-	@Override
 	public BedPatientAssignment getBedPatientAssignmentByUuid(String uuid) {
 		Session session = sessionFactory.getCurrentSession();
 		return (BedPatientAssignment) session.createQuery("from BedPatientAssignment bpa " + "where bpa.uuid = :uuid")
 		        .setParameter("uuid", uuid).uniqueResult();
+	}
+	
+	@Override
+	public List<BedPatientAssignment> getBedPatientAssignmentByEncounter(String encunterUuid, boolean includeEnded) {
+		Session session = sessionFactory.getCurrentSession();
+		List<BedPatientAssignment> bpaList = (List<BedPatientAssignment>) session
+		        .createQuery("select bpa from BedPatientAssignment bpa " + "inner join bpa.encounter enc "
+		                + "where enc.uuid = :encounterUuid AND " + "(bpa.endDatetime IS NULL OR :includeEnded IS TRUE) AND "
+		                + "(bpa.voided IS FALSE) " + "order by bpa.startDatetime DESC")
+		        .setParameter("encounterUuid", encunterUuid).setParameter("includeEnded", includeEnded).list();
+		return bpaList;
+	}
+	
+	public List<BedPatientAssignment> getBedPatientAssignmentByVisit(String visitUuid, boolean includeEnded) {
+		Session session = sessionFactory.getCurrentSession();
+		List<BedPatientAssignment> bpaList = (List<BedPatientAssignment>) session
+		        .createQuery(
+		            "select bpa from BedPatientAssignment bpa " + "inner join bpa.encounter enc " + "inner join enc.visit v "
+		                    + "where v.uuid = :visitUuid AND " + "(bpa.endDatetime IS NULL OR :includeEnded IS TRUE) AND "
+		                    + "(bpa.voided IS FALSE) " + "order by bpa.startDatetime DESC")
+		        .setParameter("visitUuid", visitUuid).setParameter("includeEnded", includeEnded).list();
+		
+		return bpaList;
 	}
 	
 	@Override
@@ -244,31 +205,43 @@ public class BedManagementDaoImpl implements BedManagementDao {
 	public BedLocationMapping saveBedLocationMapping(BedLocationMapping bedLocationMapping) {
 		Session session = this.sessionFactory.getCurrentSession();
 		session.saveOrUpdate(bedLocationMapping);
-		session.flush();
 		return bedLocationMapping;
 	}
 	
 	@Override
 	public List<BedLayout> getBedLayoutsByLocation(Location location) {
-		Set<Location> locations = new HashSet<Location>(Arrays.asList(location));
+		List<BedLayout> bedLayouts = new ArrayList<>();
+		Set<Location> locations = new HashSet<>(Arrays.asList(location));
 		Set<Location> childLocations = location.getChildLocations();
 		if (!CollectionUtils.isEmpty(childLocations)) {
 			locations.addAll(childLocations);
 		}
-		
-		String hql = "select blm.row as rowNumber, blm.column as columnNumber, "
-		        + "bed as bed, blm.location.name as location " + "from BedLocationMapping blm "
-		        + "left outer join blm.bed bed " + "where blm.location in (:locations) ";
-		
-		List<BedLayoutWithDetails> bedLayoutWithDetailsList = sessionFactory.getCurrentSession().createQuery(hql)
-		        .setParameterList("locations", locations)
-		        .setResultTransformer(Transformers.aliasToBean(BedLayoutWithDetails.class)).list();
-		
-		List<BedLayout> bedLayouts = new ArrayList<>();
-		for (BedLayoutWithDetails bedLayoutWithDetails : bedLayoutWithDetailsList) {
-			bedLayouts.add(bedLayoutWithDetails.convertToBedLayout());
+		List<BedLocationMapping> bedLocationMappings = sessionFactory.getCurrentSession()
+		        .createQuery("select blm from BedLocationMapping blm where blm.location in (:locations) ")
+		        .setParameter("locations", locations).list();
+		for (BedLocationMapping blm : bedLocationMappings) {
+			BedLayout bedLayout = new BedLayout();
+			bedLayout.setRowNumber(blm.getRow());
+			bedLayout.setColumnNumber(blm.getColumn());
+			bedLayout.setLocation(blm.getLocation().getName());
+			if (blm.getBed() != null) {
+				bedLayout.setBedNumber(blm.getBed().getBedNumber());
+				bedLayout.setBedId(blm.getBed().getId());
+				bedLayout.setBedUuid(blm.getBed().getUuid());
+				bedLayout.setStatus(blm.getBed().getStatus());
+				bedLayout.setBedType(blm.getBed().getBedType());
+				bedLayout.setBedTagMaps(new HashSet<>());
+				if (blm.getBed().getBedTagMap() != null) {
+					for (BedTagMap bedTagMap : blm.getBed().getBedTagMap()) {
+						if (BooleanUtils.isNotTrue(bedTagMap.getVoided())) {
+							bedLayout.getBedTagMaps().add(bedTagMap);
+						}
+					}
+				}
+				bedLayout.setBedPatientAssignments(getCurrentAssignmentsByBed(blm.getBed()));
+			}
+			bedLayouts.add(bedLayout);
 		}
-		
 		return bedLayouts;
 	}
 	
@@ -340,7 +313,6 @@ public class BedManagementDaoImpl implements BedManagementDao {
 	public Bed saveBed(Bed bed) {
 		Session session = this.sessionFactory.getCurrentSession();
 		session.saveOrUpdate(bed);
-		session.flush();
 		return bed;
 	}
 	
@@ -371,7 +343,6 @@ public class BedManagementDaoImpl implements BedManagementDao {
 	public BedTag saveBedTag(BedTag bedTag) {
 		Session session = this.sessionFactory.getCurrentSession();
 		session.saveOrUpdate(bedTag);
-		session.flush();
 		return bedTag;
 	}
 	
@@ -379,7 +350,6 @@ public class BedManagementDaoImpl implements BedManagementDao {
 	public void deleteBedTag(BedTag bedTag) {
 		Session session = this.sessionFactory.getCurrentSession();
 		session.delete(bedTag);
-		session.flush();
 	}
 	
 	@Override
@@ -415,7 +385,6 @@ public class BedManagementDaoImpl implements BedManagementDao {
 	public BedType saveBedType(BedType bedType) {
 		Session session = this.sessionFactory.getCurrentSession();
 		session.saveOrUpdate(bedType);
-		session.flush();
 		return bedType;
 	}
 	
@@ -423,13 +392,18 @@ public class BedManagementDaoImpl implements BedManagementDao {
 	public void deleteBedType(BedType bedType) {
 		Session session = this.sessionFactory.getCurrentSession();
 		session.delete(bedType);
-		session.flush();
 	}
 	
 	@Override
 	public void deleteBedLocationMapping(BedLocationMapping bedLocationMapping) {
 		Session session = this.sessionFactory.getCurrentSession();
 		session.delete(bedLocationMapping);
-		session.flush();
+	}
+	
+	@Override
+	public BedPatientAssignment saveBedPatientAssignment(BedPatientAssignment bedPatientAssignment) {
+		Session session = this.sessionFactory.getCurrentSession();
+		session.saveOrUpdate(bedPatientAssignment);
+		return bedPatientAssignment;
 	}
 }

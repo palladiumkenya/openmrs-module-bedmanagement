@@ -17,6 +17,7 @@ import org.openmrs.module.bedmanagement.entity.Bed;
 import org.openmrs.module.bedmanagement.entity.BedLocationMapping;
 import org.openmrs.module.bedmanagement.entity.BedPatientAssignment;
 import org.openmrs.module.bedmanagement.service.impl.BedManagementServiceImpl;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
@@ -34,6 +35,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.powermock.api.mockito.PowerMockito.mockStatic;
 
+@PowerMockIgnore("javax.management.*")
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(Context.class)
 public class BedManagementServiceImplTest {
@@ -82,7 +84,6 @@ public class BedManagementServiceImplTest {
 		previousAssignment.setPatient(patient);
 		previousAssignment.setStartDatetime(new Date());
 		previousAssignment.setEndDatetime(new Date());
-		bed.setBedPatientAssignment(new HashSet<BedPatientAssignment>(Arrays.asList(currentAssignment, previousAssignment)));
 		
 		when(bedManagementDao.getBedById(bedId)).thenReturn(bed);
 		when(bedManagementDao.getWardForBed(bed)).thenReturn(ward);
@@ -125,8 +126,6 @@ public class BedManagementServiceImplTest {
 		stoppedBedAssignment.setPatient(patient1);
 		stoppedBedAssignment.setStartDatetime(new Date());
 		stoppedBedAssignment.setEndDatetime(new Date());
-		bed.setBedPatientAssignment(new LinkedHashSet<BedPatientAssignment>(
-		        Arrays.asList(currentAssignment1, currentAssignment2, stoppedBedAssignment)));
 		
 		when(bedManagementDao.getBedById(bedId)).thenReturn(bed);
 		when(bedManagementDao.getWardForBed(bed)).thenReturn(ward);

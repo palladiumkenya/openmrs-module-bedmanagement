@@ -7,24 +7,24 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.openmrs.User;
+import org.openmrs.api.APIException;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.bedmanagement.dao.BedTagMapDao;
 import org.openmrs.module.bedmanagement.entity.Bed;
 import org.openmrs.module.bedmanagement.entity.BedTag;
 import org.openmrs.module.bedmanagement.entity.BedTagMap;
 import org.openmrs.module.bedmanagement.service.impl.BedTagMapServiceImpl;
-import org.openmrs.module.webservices.rest.web.response.IllegalPropertyException;
 import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.mockito.MockitoAnnotations.initMocks;
 
+@PowerMockIgnore("javax.management.*")
 @RunWith(PowerMockRunner.class)
 @PrepareForTest({ Context.class })
 public class BedTagMapServiceImplTest {
@@ -78,7 +78,7 @@ public class BedTagMapServiceImplTest {
 	
 	@Test
 	public void shouldThrowExceptionIfGivenBedAlreadyAssignedGivenBedTag() throws Exception {
-		exception.expect(IllegalPropertyException.class);
+		exception.expect(APIException.class);
 		exception.expectMessage("Tag Already Present For Bed");
 		
 		Bed bed = new Bed();

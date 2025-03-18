@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.openmrs.module</groupId>
 		<artifactId>bedmanagement</artifactId>
-		<version>5.14.0-SNAPSHOT</version>
+		<version>6.1.0-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>bedmanagement-omod</artifactId>
@@ -40,7 +40,11 @@
 			<artifactId>${project.parent.artifactId}-api</artifactId>
 			<version>${project.parent.version}</version>
 		</dependency>
-		
+		<dependency>
+			<groupId>${project.parent.groupId}</groupId>
+			<artifactId>${project.parent.artifactId}-atom-feed</artifactId>
+			<version>${project.parent.version}</version>
+		</dependency>
 				
 		<!-- End OpenMRS modules -->
 		

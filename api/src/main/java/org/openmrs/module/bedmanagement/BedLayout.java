@@ -1,9 +1,12 @@
 package org.openmrs.module.bedmanagement;
 
 import org.openmrs.Patient;
+import org.openmrs.module.bedmanagement.entity.BedPatientAssignment;
 import org.openmrs.module.bedmanagement.entity.BedTagMap;
 import org.openmrs.module.bedmanagement.entity.BedType;
 
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class BedLayout {
@@ -24,7 +27,7 @@ public class BedLayout {
 	
 	private String location;
 	
-	private Patient patient;
+	private List<BedPatientAssignment> bedPatientAssignments;
 	
 	private Set<BedTagMap> bedTagMaps;
 	
@@ -92,12 +95,22 @@ public class BedLayout {
 		this.location = location;
 	}
 	
-	public Patient getPatient() {
-		return patient;
+	public List<BedPatientAssignment> getBedPatientAssignments() {
+		return bedPatientAssignments;
 	}
 	
-	public void setPatient(Patient patient) {
-		this.patient = patient;
+	public void setBedPatientAssignments(List<BedPatientAssignment> bedPatientAssignments) {
+		this.bedPatientAssignments = bedPatientAssignments;
+	}
+	
+	public Set<Patient> getPatients() {
+		Set<Patient> patients = new HashSet<>();
+		if (bedPatientAssignments != null) {
+			for (BedPatientAssignment assignment : bedPatientAssignments) {
+				patients.add(assignment.getPatient());
+			}
+		}
+		return patients;
 	}
 	
 	@Override

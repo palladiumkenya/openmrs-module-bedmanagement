@@ -13,20 +13,20 @@
  */
 package org.openmrs.module.bedmanagement.dao;
 
-import org.openmrs.Encounter;
 import org.openmrs.Location;
 import org.openmrs.Patient;
+import org.openmrs.module.bedmanagement.AdmissionLocation;
 import org.openmrs.module.bedmanagement.BedLayout;
 import org.openmrs.module.bedmanagement.constants.BedStatus;
-import org.openmrs.module.bedmanagement.entity.*;
-import org.openmrs.module.bedmanagement.AdmissionLocation;
-import org.openmrs.module.bedmanagement.BedDetails;
+import org.openmrs.module.bedmanagement.entity.Bed;
+import org.openmrs.module.bedmanagement.entity.BedLocationMapping;
+import org.openmrs.module.bedmanagement.entity.BedPatientAssignment;
+import org.openmrs.module.bedmanagement.entity.BedTag;
+import org.openmrs.module.bedmanagement.entity.BedType;
 
 import java.util.List;
 
 public interface BedManagementDao {
-	
-	BedDetails assignPatientToBed(Patient patient, Encounter encounter, Bed bed);
 	
 	Bed getBedById(int id);
 	
@@ -36,9 +36,11 @@ public interface BedManagementDao {
 	
 	Location getWardForBed(Bed bed);
 	
-	BedDetails unassignPatient(Patient patient, Bed bed);
-	
 	BedPatientAssignment getBedPatientAssignmentByUuid(String uuid);
+	
+	List<BedPatientAssignment> getBedPatientAssignmentByEncounter(String encunterUuid, boolean includeEnded);
+	
+	List<BedPatientAssignment> getBedPatientAssignmentByVisit(String visitUuid, boolean includeEnded);
 	
 	List<BedPatientAssignment> getCurrentAssignmentsByBed(Bed bed);
 	
@@ -215,4 +217,10 @@ public interface BedManagementDao {
 	 * @param bedLocationMapping
 	 */
 	void deleteBedLocationMapping(BedLocationMapping bedLocationMapping);
+	
+	/**
+	 * @param bedPatientAssignment the BedPatientAssignment to save
+	 * @return the saved BedPatientAssignment
+	 */
+	BedPatientAssignment saveBedPatientAssignment(BedPatientAssignment bedPatientAssignment);
 }

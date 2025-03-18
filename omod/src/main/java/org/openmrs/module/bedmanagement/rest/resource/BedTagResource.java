@@ -17,19 +17,19 @@ import io.swagger.models.Model;
 import io.swagger.models.ModelImpl;
 import io.swagger.models.properties.StringProperty;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.bedmanagement.entity.BedType;
-import org.openmrs.module.bedmanagement.service.BedManagementService;
 import org.openmrs.module.bedmanagement.entity.BedTag;
+import org.openmrs.module.bedmanagement.service.BedManagementService;
 import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.ConversionUtil;
 import org.openmrs.module.webservices.rest.web.RequestContext;
 import org.openmrs.module.webservices.rest.web.RestConstants;
 import org.openmrs.module.webservices.rest.web.annotation.Resource;
+import org.openmrs.module.webservices.rest.web.representation.CustomRepresentation;
 import org.openmrs.module.webservices.rest.web.representation.Representation;
 import org.openmrs.module.webservices.rest.web.resource.api.PageableResult;
-import org.openmrs.module.webservices.rest.web.resource.impl.AlreadyPaged;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingCrudResource;
 import org.openmrs.module.webservices.rest.web.resource.impl.DelegatingResourceDescription;
+import org.openmrs.module.webservices.rest.web.resource.impl.NeedsPaging;
 import org.openmrs.module.webservices.rest.web.response.ConversionException;
 import org.openmrs.module.webservices.rest.web.response.IllegalPropertyException;
 import org.openmrs.module.webservices.rest.web.response.ResourceDoesNotSupportOperationException;
@@ -37,11 +37,15 @@ import org.openmrs.module.webservices.rest.web.response.ResponseException;
 
 import java.util.List;
 
-@Resource(name = RestConstants.VERSION_1 + "/bedTag", supportedClass = BedTag.class, supportedOpenmrsVersions = { "1.9.* - 9.*" })
+@Resource(name = RestConstants.VERSION_1 + "/bedTag", supportedClass = BedTag.class, supportedOpenmrsVersions = {
+        "1.9.* - 9.*" })
 public class BedTagResource extends DelegatingCrudResource<BedTag> {
 	
 	@Override
 	public DelegatingResourceDescription getRepresentationDescription(Representation rep) {
+		if (rep instanceof CustomRepresentation) {
+			return null;
+		}
 		DelegatingResourceDescription description = new DelegatingResourceDescription();
 		description.addProperty("id");
 		description.addProperty("name");
@@ -78,27 +82,25 @@ public class BedTagResource extends DelegatingCrudResource<BedTag> {
 	
 	@Override
 	protected PageableResult doGetAll(RequestContext context) throws ResponseException {
-		List<BedTag> bedTags = Context.getService(BedManagementService.class).getBedTags(null, context.getLimit(),
-		    context.getStartIndex());
-		return new AlreadyPaged<BedTag>(context, bedTags, false);
+		List<BedTag> bedTags = getBedManagementService().getBedTags(null, null, null);
+		return new NeedsPaging<>(bedTags, context);
 	}
 	
 	@Override
 	protected PageableResult doSearch(RequestContext context) {
 		String name = context.getParameter("name");
-		List<BedTag> bedTags = Context.getService(BedManagementService.class).getBedTags(name, context.getLimit(),
-		    context.getStartIndex());
-		return new AlreadyPaged<BedTag>(context, bedTags, false);
+		List<BedTag> bedTags = getBedManagementService().getBedTags(name, null, null);
+		return new NeedsPaging<>(bedTags, context);
 	}
 	
 	@Override
 	public BedTag getByUniqueId(String uniqueId) {
-		return Context.getService(BedManagementService.class).getBedTagByUuid(uniqueId);
+		return getBedManagementService().getBedTagByUuid(uniqueId);
 	}
 	
 	@Override
 	public BedTag save(BedTag bedTag) {
-		return Context.getService(BedManagementService.class).saveBedTag(bedTag);
+		return getBedManagementService().saveBedTag(bedTag);
 	}
 	
 	@Override
@@ -107,20 +109,20 @@ public class BedTagResource extends DelegatingCrudResource<BedTag> {
 			throw new ConversionException("Required properties: name");
 		
 		BedTag bedTag = this.constructBedTag(null, propertiesToCreate);
-		Context.getService(BedManagementService.class).saveBedTag(bedTag);
+		getBedManagementService().saveBedTag(bedTag);
 		return ConversionUtil.convertToRepresentation(bedTag, context.getRepresentation());
 	}
 	
 	@Override
 	public Object update(String uuid, SimpleObject propertiesToUpdate, RequestContext context) throws ResponseException {
 		BedTag bedTag = this.constructBedTag(uuid, propertiesToUpdate);
-		Context.getService(BedManagementService.class).saveBedTag(bedTag);
+		getBedManagementService().saveBedTag(bedTag);
 		return ConversionUtil.convertToRepresentation(bedTag, context.getRepresentation());
 	}
 	
 	@Override
 	protected void delete(BedTag bedTag, String reason, RequestContext context) throws ResponseException {
-		Context.getService(BedManagementService.class).deleteBedTag(bedTag, reason);
+		getBedManagementService().deleteBedTag(bedTag, reason);
 	}
 	
 	@Override
@@ -131,7 +133,7 @@ public class BedTagResource extends DelegatingCrudResource<BedTag> {
 	private BedTag constructBedTag(String uuid, SimpleObject properties) {
 		BedTag bedTag;
 		if (uuid != null) {
-			bedTag = Context.getService(BedManagementService.class).getBedTagByUuid(uuid);
+			bedTag = getBedManagementService().getBedTagByUuid(uuid);
 			if (bedTag == null)
 				throw new IllegalPropertyException("Bed Tag not exist");
 			
@@ -145,5 +147,9 @@ public class BedTagResource extends DelegatingCrudResource<BedTag> {
 		}
 		
 		return bedTag;
+	}
+	
+	BedManagementService getBedManagementService() {
+		return Context.getService(BedManagementService.class);
 	}
 }

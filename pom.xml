@@ -4,7 +4,7 @@
 
   <groupId>org.openmrs.module</groupId>
   <artifactId>bedmanagement</artifactId>
-  <version>5.14.0-SNAPSHOT</version>
+  <version>6.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Bed Management Module</name>
   <description>Helps in alloting beds.</description>
@@ -31,6 +31,7 @@
 
   <modules>
     <module>api</module>
+    <module>atom-feed</module>
     <module>owa</module>
     <module>omod</module>
   </modules>
@@ -41,7 +42,6 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <webservicesRestModuleVersion>2.29.0</webservicesRestModuleVersion>
     <openmrsAtomfeedVersion>2.6.1</openmrsAtomfeedVersion>
-    <openmrsOwaVersion>1.7.0</openmrsOwaVersion>
     <atomfeed.version>1.10.1</atomfeed.version>
     <legacyuiVersion>1.11.0</legacyuiVersion>
     <log4jVersion>2.17.1</log4jVersion>
@@ -148,8 +148,8 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
           <configuration>
-            <target>1.6</target>
-            <source>1.6</source>
+            <target>8</target>
+            <source>8</source>
           </configuration>
         </plugin>
         <plugin>
